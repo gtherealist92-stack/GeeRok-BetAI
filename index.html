@@ -34,25 +34,25 @@
       <button onclick="filterLeague('SA')" class="league-btn px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-2xl font-medium">Serie A</button>
     </div>
 
+    <div id="status" class="text-center text-sm text-gray-400 mb-4"></div>
     <div id="matches-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
   </div>
 
-  <!-- Match Modal -->
+  <!-- Modals -->
   <div id="modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
-    <div class="bg-gray-900 rounded-3xl max-w-lg w-full max-h-[90vh] overflow-auto">
-      <button onclick="closeModal()" class="float-right text-4xl p-6 text-gray-400 hover:text-white">×</button>
-      <div id="modal-content" class="p-6"></div>
+    <div class="bg-gray-900 rounded-3xl max-w-lg w-full p-6 max-h-[90vh] overflow-auto">
+      <button onclick="closeModal()" class="float-right text-4xl text-gray-400 hover:text-white">×</button>
+      <div id="modal-content"></div>
     </div>
   </div>
 
-  <!-- Bet Slip Modal -->
   <div id="bet-slip-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
     <div class="bg-gray-900 rounded-3xl max-w-md w-full p-6">
       <h2 class="text-2xl font-bold mb-6">Your Bet Slip</h2>
-      <div id="bet-slip-content" class="space-y-4 min-h-[200px]"></div>
+      <div id="bet-slip-content" class="space-y-4"></div>
       <div class="flex gap-3 mt-8">
-        <button onclick="clearBetSlip()" class="flex-1 bg-red-500 hover:bg-red-600 py-4 rounded-2xl font-bold">Clear All</button>
-        <button onclick="closeBetSlip()" class="flex-1 bg-gray-700 hover:bg-gray-600 py-4 rounded-2xl font-bold">Close</button>
+        <button onclick="clearBetSlip()" class="flex-1 bg-red-500 py-4 rounded-2xl font-bold">Clear</button>
+        <button onclick="closeBetSlip()" class="flex-1 bg-gray-700 py-4 rounded-2xl font-bold">Close</button>
       </div>
     </div>
   </div>
@@ -61,26 +61,36 @@
     const API_KEY = "148ee286e5374f1397e920ed3c7e8988";
     let betSlip = [];
     let allMatches = [];
+    let lastUpdated = null;
     let currentFilter = 'all';
 
     async function loadMatches() {
-      document.getElementById('matches-list').innerHTML = `<p class="col-span-3 text-center py-20 text-gray-400">Fetching real matches...</p>`;
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = "Fetching live matches...";
 
       try {
         const res = await fetch(`https://api.football-data.org/v4/matches?date=${new Date().toISOString().split('T')[0]}`, {
           headers: { "X-Auth-Token": API_KEY }
         });
+
         if (res.ok) {
           const data = await res.json();
           allMatches = data.matches || [];
+          lastUpdated = new Date();
+          statusEl.innerHTML = `✅ Live data • Updated just now`;
+        } else {
+          throw new Error("Rate limit");
         }
       } catch (e) {
-        console.log("Using demo data");
-        allMatches = [
-          {id:1, competition:{name:"Premier League"}, homeTeam:{name:"Arsenal"}, awayTeam:{name:"Tottenham"}, utcDate:new Date().toISOString(), status:"LIVE", score:{fullTime:{home:2,away:1}}},
-          {id:2, competition:{name:"La Liga"}, homeTeam:{name:"Real Madrid"}, awayTeam:{name:"Barcelona"}, utcDate:new Date(Date.now()+7200000).toISOString(), status:"SCHEDULED", score:{fullTime:{home:null,away:null}}},
-          {id:3, competition:{name:"Bundesliga"}, homeTeam:{name:"Bayern Munich"}, awayTeam:{name:"Borussia Dortmund"}, utcDate:new Date().toISOString(), status:"LIVE", score:{fullTime:{home:3,away:2}}},
-        ];
+        statusEl.innerHTML = `⚠️ Using demo data (API limit) • Last updated: ${lastUpdated ? lastUpdated.toLocaleTimeString() : 'now'}`;
+        if (allMatches.length === 0) {
+          allMatches = [
+            {id:1, competition:{name:"Premier League"}, homeTeam:{name:"Arsenal"}, awayTeam:{name:"Tottenham"}, utcDate:new Date().toISOString(), status:"LIVE", score:{fullTime:{home:2,away:1}}},
+            {id:2, competition:{name:"La Liga"}, homeTeam:{name:"Real Madrid"}, awayTeam:{name:"Barcelona"}, utcDate:new Date(Date.now()+3600000).toISOString(), status:"SCHEDULED", score:{fullTime:{home:null,away:null}}},
+            {id:3, competition:{name:"Bundesliga"}, homeTeam:{name:"Bayern Munich"}, awayTeam:{name:"Borussia Dortmund"}, utcDate:new Date().toISOString(), status:"LIVE", score:{fullTime:{home:3,away:2}}},
+            {id:4, competition:{name:"Serie A"}, homeTeam:{name:"Inter Milan"}, awayTeam:{name:"AC Milan"}, utcDate:new Date(Date.now()+7200000).toISOString(), status:"SCHEDULED", score:{fullTime:{home:null,away:null}}},
+          ];
+        }
       }
       renderMatches();
     }
@@ -98,35 +108,35 @@
 
       let filtered = allMatches.filter(match => {
         if (currentFilter === 'all') return true;
-        const comp = match.competition.name.toLowerCase();
-        if (currentFilter === 'PL') return comp.includes('premier');
-        if (currentFilter === 'LL') return comp.includes('la liga');
-        if (currentFilter === 'BL') return comp.includes('bundes');
-        if (currentFilter === 'SA') return comp.includes('serie');
+        const name = match.competition.name.toLowerCase();
+        if (currentFilter === 'PL') return name.includes('premier');
+        if (currentFilter === 'LL') return name.includes('la liga');
+        if (currentFilter === 'BL') return name.includes('bundes');
+        if (currentFilter === 'SA') return name.includes('serie');
         return true;
       });
 
       if (filtered.length === 0) {
-        container.innerHTML = `<p class="col-span-3 text-center py-20 text-gray-400">No matches found in this league right now.</p>`;
+        container.innerHTML = `<p class="col-span-3 text-center py-20 text-gray-400">No matches in this league right now.</p>`;
         return;
       }
 
       filtered.forEach(match => {
-        const homeG = match.score?.fullTime?.home ?? '-';
-        const awayG = match.score?.fullTime?.away ?? '-';
+        const h = match.score?.fullTime?.home ?? '-';
+        const a = match.score?.fullTime?.away ?? '-';
         const isLive = match.status === "LIVE" || match.status === "IN_PLAY";
 
         const card = document.createElement('div');
-        card.className = `bg-gray-900 rounded-3xl p-6 cursor-pointer hover:scale-105 transition-all ${isLive ? 'border-2 border-red-500' : 'border border-gray-800'}`;
+        card.className = `bg-gray-900 rounded-3xl p-6 cursor-pointer hover:scale-105 transition-all border ${isLive ? 'border-red-500' : 'border-gray-800'}`;
         card.innerHTML = `
-          <div class="text-xs text-gray-500 mb-4">${match.competition.name}</div>
-          <div class="flex justify-between items-center">
-            <div class="flex-1 font-semibold">${match.homeTeam.name}</div>
+          <div class="text-xs text-gray-500">${match.competition.name}</div>
+          <div class="flex justify-between items-center mt-4">
+            <div class="flex-1">${match.homeTeam.name}</div>
             <div class="text-center">
-              <div class="text-3xl font-bold">${homeG} - ${awayG}</div>
+              <div class="text-3xl font-bold">${h} - ${a}</div>
               ${isLive ? `<div class="live text-red-500 text-sm font-bold mt-1">● LIVE</div>` : ''}
             </div>
-            <div class="flex-1 text-right font-semibold">${match.awayTeam.name}</div>
+            <div class="flex-1 text-right">${match.awayTeam.name}</div>
           </div>
         `;
         card.onclick = () => showMatchDetail(match);
@@ -135,32 +145,27 @@
     }
 
     function showMatchDetail(match) {
+      // Same beautiful modal as before
       const content = document.getElementById('modal-content');
       const recs = [
-        {bet: "Over 2.5 Goals", conf: "82%", reason: "Both teams playing open football recently."},
-        {bet: "BTTS - Yes", conf: "75%", reason: "High chance both teams will score."},
-        {bet: match.homeTeam.name + " to Win", conf: "68%", reason: "Home advantage and current form."}
+        {bet: "Over 2.5 Goals", conf: "82%", reason: "High scoring teams expected"},
+        {bet: "BTTS - Yes", conf: "76%", reason: "Both teams in good attacking form"},
+        {bet: match.homeTeam.name + " Win", conf: "68%", reason: "Strong recent form"}
       ];
 
       let html = `
         <h2 class="text-3xl font-bold text-center">${match.homeTeam.name} vs ${match.awayTeam.name}</h2>
-        <p class="text-center text-emerald-400 mt-2">${match.competition.name}</p>
-        <p class="text-center text-xl mt-6 ${match.status === "LIVE" ? "text-red-500" : ""}">
-          ${match.status === "LIVE" ? "🔴 LIVE" : "Upcoming"}
-        </p>
+        <p class="text-emerald-400 text-center">${match.competition.name}</p>
+        <p class="text-center text-xl mt-6 ${match.status === "LIVE" ? "text-red-500" : ""}">${match.status === "LIVE" ? "🔴 LIVE" : "Upcoming"}</p>
         <h3 class="mt-10 mb-6 text-xl font-bold text-emerald-400">Recommendations</h3>
       `;
 
       recs.forEach(r => {
         html += `
           <div class="bg-gray-800 rounded-2xl p-5 mb-4">
-            <div class="flex justify-between">
-              <div class="font-bold">${r.bet}</div>
-              <div class="text-emerald-400 font-bold">${r.conf}</div>
-            </div>
+            <div class="flex justify-between"><div class="font-bold">${r.bet}</div><div class="text-emerald-400 font-bold">${r.conf}</div></div>
             <p class="text-gray-400 text-sm mt-2">${r.reason}</p>
-            <button onclick="addToBetSlip('${match.homeTeam.name} vs ${match.awayTeam.name}', '${r.bet}', '${r.conf}');closeModal()" 
-              class="mt-4 w-full bg-emerald-500 py-4 rounded-2xl font-bold">Add to Bet Slip</button>
+            <button onclick="addToBetSlip('${match.homeTeam.name} vs ${match.awayTeam.name}', '${r.bet}', '${r.conf}'); closeModal()" class="mt-4 w-full bg-emerald-500 py-4 rounded-2xl font-bold">Add to Bet Slip</button>
           </div>`;
       });
 
@@ -174,35 +179,25 @@
       alert(`✅ Added: ${bet} on ${match}`);
     }
 
+    // Bet slip functions (showBetSlip, remove, clear, close) - same as before
     function showBetSlip() {
       const content = document.getElementById('bet-slip-content');
-      content.innerHTML = betSlip.length === 0 ? 
-        `<p class="text-gray-400 text-center py-12">Your bet slip is empty</p>` : 
+      content.innerHTML = betSlip.length === 0 ? `<p class="text-gray-400 text-center py-12">Bet slip empty</p>` : 
         betSlip.map((item,i) => `
           <div class="bg-gray-800 p-4 rounded-2xl flex justify-between">
-            <div><div class="font-medium">${item.match}</div><div class="text-emerald-400">${item.bet}</div></div>
+            <div><div>${item.match}</div><div class="text-emerald-400">${item.bet}</div></div>
             <button onclick="removeFromSlip(${i})" class="text-red-400">Remove</button>
           </div>`).join('');
       document.getElementById('bet-slip-modal').classList.remove('hidden');
     }
 
-    function removeFromSlip(i) {
-      betSlip.splice(i,1);
-      document.getElementById('bet-count').textContent = betSlip.length;
-      showBetSlip();
-    }
-
-    function clearBetSlip() {
-      betSlip = [];
-      document.getElementById('bet-count').textContent = '0';
-      showBetSlip();
-    }
-
+    function removeFromSlip(i) { betSlip.splice(i,1); document.getElementById('bet-count').textContent = betSlip.length; showBetSlip(); }
+    function clearBetSlip() { betSlip = []; document.getElementById('bet-count').textContent = '0'; showBetSlip(); }
     function closeModal() { document.getElementById('modal').classList.add('hidden'); }
     function closeBetSlip() { document.getElementById('bet-slip-modal').classList.add('hidden'); }
 
-    // Auto refresh
-    setInterval(loadMatches, 45000);
+    // Auto refresh every 60 seconds
+    setInterval(loadMatches, 60000);
 
     // Start
     loadMatches();
