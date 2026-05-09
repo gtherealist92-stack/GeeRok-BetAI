@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FootBet AI ⚽</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <style>
+    body { font-family: 'Segoe UI', system-ui, sans-serif; }
+    .live { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
+  </style>
+</head>
+<body class="bg-gray-950 text-white min-h-screen">
+  <div class="max-w-6xl mx-auto p-4">
+    <header class="flex justify-between items-center mb-8">
+      <h1 class="text-4xl font-bold flex items-center gap-3">
+        ⚽ FootBet <span class="text-emerald-400">AI</span>
+      </h1>
+      <div class="flex items-center gap-4">
+        <button onclick="showBetSlip()" 
+          class="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 px-6 py-3 rounded-2xl transition-all">
+          <i class="fas fa-ticket-alt"></i>
+          <span class="font-medium">Bet Slip</span>
+          <span id="bet-count" class="bg-emerald-500 text-white text-xs px-2 py-1 rounded-full">0</span>
+        </button>
+        <div class="text-sm text-gray-400">v1.5 • Live Ready</div>
+      </div>
+    </header>
+
+    <div id="matches-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+  </div>
+
+  <!-- Match Detail Modal -->
+  <div id="modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div class="bg-gray-900 rounded-3xl max-w-lg w-full p-6 max-h-[90vh] overflow-auto">
+      <button onclick="closeModal()" class="float-right text-3xl text-gray-400 hover:text-white">×</button>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <!-- Bet Slip Modal -->
+  <div id="bet-slip-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div class="bg-gray-900 rounded-3xl max-w-md w-full p-6">
+      <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+        <i class="fas fa-ticket-alt"></i> Your Bet Slip
+      </h2>
+      <div id="bet-slip-content" class="space-y-4 min-h-[150px]"></div>
+      
+      <div class="flex gap-3 mt-8">
+        <button onclick="clearBetSlip()" class="flex-1 bg-red-500 hover:bg-red-600 py-4 rounded-2xl font-bold">Clear All</button>
+        <button onclick="closeBetSlip()" class="flex-1 bg-gray-700 hover:bg-gray-600 py-4 rounded-2xl font-bold">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let betSlip = [];
+
+    const mockMatches = [
+      { id: 1, competition: {name: "Premier League"}, homeTeam: {name: "Arsenal"}, awayTeam: {name: "Tottenham"}, utcDate: "2026-05-10T14:00:00Z", status: "LIVE", score: "2-1" },
+      { id: 2, competition: {name: "La Liga"}, homeTeam: {name: "Real Madrid"}, awayTeam: {name: "Barcelona"}, utcDate: "2026-05-10T17:30:00Z", status: "SCHEDULED", score: "0-0" },
+      { id: 3, competition: {name: "Bundesliga"}, homeTeam: {name: "Bayern Munich"}, awayTeam: {name: "Borussia Dortmund"}, utcDate: "2026-05-10T19:30:00Z", status: "LIVE", score: "3-2" },
+      { id: 4, competition: {name: "Serie A"}, homeTeam: {name: "Inter Milan"}, awayTeam: {name: "AC Milan"}, utcDate: "2026-05-10T20:00:00Z", status: "SCHEDULED", score: "1-0" },
+    ];
+
+    function loadMatches() {
+      const container = document.getElementById('matches-list');
+      container.innerHTML = '';
+
+      mockMatches.forEach(match => {
+        const isLive = match.status === "LIVE";
+        const card = document.createElement('div');
+        card.className = `bg-gray-900 rounded-3xl p-6 cursor-pointer hover:scale-[1.02] transition-all border ${isLive ? 'border-red-500 shadow-lg shadow-red-500/30' : 'border-gray-800'}`;
+        
+        card.innerHTML = `
+          <div class="text-xs uppercase tracking-widest text-gray-500 mb-3">${match.competition.name}</div>
+          <div class="flex justify-between items-center">
+            <div class="flex-1 text-lg font-semibold">${match.homeTeam.name}</div>
+            <div class="text-center">
+              <div class="text-3xl font-bold mb-1">${match.score}</div>
+              ${isLive ? `<div class="live text-red-500 text-sm font-bold flex items-center justify-center gap-1"><span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span> LIVE</div>` : ''}
+            </div>
+            <div class="flex-1 text-right text-lg font-semibold">${match.awayTeam.name}</div>
+          </div>
+          <div class="text-center text-xs text-gray-400 mt-4">
+            ${new Date(match.utcDate).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+          </div>
+        `;
+        card.onclick = () => showMatchDetail(match);
+        container.appendChild(card);
+      });
+    }
+
+    function showMatchDetail(match) {
+      const content = document.getElementById('modal-content');
+      const recs = [
+        { bet: "Over 2.5 Goals", conf: "82%", reason: "Both teams love attacking football. High goals expected." },
+        { bet: "BTTS - Yes", conf: "77%", reason: "Both sides have scored in most of their recent matches." },
+        { bet: match.homeTeam.name + " Win", conf: "68%", reason: "Strong recent form at home/against rivals." }
+      ];
+
+      let html = `
+        <h2 class="text-3xl font-bold text-center mb-1">${match.homeTeam.name} vs ${match.awayTeam.name}</h2>
+        <p class="text-emerald-400 text-center">${match.competition.name} • ${new Date(match.utcDate).toLocaleString()}</p>
+        <p class="text-center text-xl mt-4 ${match.status === "LIVE" ? "text-red-500" : "text-gray-400"}">
+          ${match.status === "LIVE" ? "🔴 LIVE • " + match.score : "Upcoming Match"}
+        </p>
+        <h3 class="text-xl font-bold mt-10 mb-5 text-emerald-400">FootBet AI Recommendations</h3>
+      `;
+
+      recs.forEach(r => {
+        html += `
+          <div class="bg-gray-800 rounded-2xl p-5 mb-5">
+            <div class="flex justify-between items-center mb-3">
+              <div class="font-bold text-lg">${r.bet}</div>
+              <div class="text-emerald-400 text-3xl font-bold">${r.conf}</div>
+            </div>
+            <p class="text-gray-400 text-sm">${r.reason}</p>
+            <button onclick="addToBetSlip('${match.homeTeam.name} vs ${match.awayTeam.name}', '${r.bet}', '${r.conf}')" 
+              class="mt-4 w-full bg-emerald-500 hover:bg-emerald-600 py-4 rounded-2xl font-bold text-lg transition-all">
+              Add to Bet Slip
+            </button>
+          </div>`;
+      });
+
+      content.innerHTML = html;
+      document.getElementById('modal').classList.remove('hidden');
+    }
+
+    function addToBetSlip(match, bet, conf) {
+      betSlip.push({ match, bet, conf });
+      document.getElementById('bet-count').textContent = betSlip.length;
+      alert(`✅ Added: ${bet} on ${match}`);
+      closeModal();
+    }
+
+    function showBetSlip() {
+      const content = document.getElementById('bet-slip-content');
+      content.innerHTML = betSlip.length === 0 
+        ? `<p class="text-gray-400 text-center py-12">Your bet slip is empty. Add some bets!</p>`
+        : betSlip.map((item, i) => `
+          <div class="bg-gray-800 p-4 rounded-2xl flex justify-between">
+            <div>
+              <div class="font-semibold">${item.match}</div>
+              <div class="text-emerald-400">${item.bet} — ${item.conf}</div>
+            </div>
+            <button onclick="removeFromSlip(${i})" class="text-red-400 hover:text-red-500">Remove</button>
+          </div>`).join('');
+
+      document.getElementById('bet-slip-modal').classList.remove('hidden');
+    }
+
+    function removeFromSlip(i) {
+      betSlip.splice(i, 1);
+      document.getElementById('bet-count').textContent = betSlip.length;
+      showBetSlip();
+    }
+
+    function clearBetSlip() {
+      betSlip = [];
+      document.getElementById('bet-count').textContent = '0';
+      showBetSlip();
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.add('hidden');
+    }
+
+    function closeBetSlip() {
+      document.getElementById('bet-slip-modal').classList.add('hidden');
+    }
+
+    // Fake live updates
+    setInterval(() => {
+      mockMatches[0].score = "3-1";
+      mockMatches[2].score = "3-2";
+      loadMatches();
+    }, 25000);
+
+    // Start
+    loadMatches();
+  </script>
+</body>
+</html>
