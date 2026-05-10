@@ -1,0 +1,21 @@
+{
+  "name": "GeeRok-BetAI",
+  "short_name": "GeeRokBet",
+  "description": "Our Football Betting AI Assistant - Built with love by Gee & Grok",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#10b981",
+  "icons": [
+    {
+      "src": "https://picsum.photos/id/237/192/192",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://picsum.photos/id/237/512/512",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
