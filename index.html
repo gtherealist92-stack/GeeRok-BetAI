@@ -70,23 +70,42 @@
   </div>
 
   <script>
+    const API_KEY = "cb4c8d9706604140d9da4e969b36d2d5";   // Your new API-Football key
+
     let betSlip = [];
     let allMatches = [];
     let currentFilter = 'all';
     let searchTerm = '';
 
-    const mockMatches = [
-      { id: 1, competition: {name: "Premier League"}, homeTeam: {name: "Arsenal"}, awayTeam: {name: "Tottenham"}, status: "LIVE", score: {fullTime: {home: 2, away: 1}} },
-      { id: 2, competition: {name: "Premier League"}, homeTeam: {name: "Manchester City"}, awayTeam: {name: "Liverpool"}, status: "LIVE", score: {fullTime: {home: 1, away: 1}} },
-      { id: 3, competition: {name: "La Liga"}, homeTeam: {name: "Real Madrid"}, awayTeam: {name: "Barcelona"}, status: "SCHEDULED", score: {fullTime: {home: null, away: null}} },
-      { id: 4, competition: {name: "Bundesliga"}, homeTeam: {name: "Bayern Munich"}, awayTeam: {name: "Borussia Dortmund"}, status: "LIVE", score: {fullTime: {home: 3, away: 2}} },
-      { id: 5, competition: {name: "Serie A"}, homeTeam: {name: "Inter Milan"}, awayTeam: {name: "AC Milan"}, status: "SCHEDULED", score: {fullTime: {home: null, away: null}} },
-      { id: 6, competition: {name: "Champions League"}, homeTeam: {name: "PSG"}, awayTeam: {name: "Barcelona"}, status: "SCHEDULED", score: {fullTime: {home: null, away: null}} }
-    ];
+    async function loadMatches() {
+      const status = document.getElementById('status');
+      status.innerHTML = '🔄 Fetching real matches from API-Football...';
 
-    function loadMatches() {
-      document.getElementById('status').innerHTML = '⚠️ Using demo data (API currently limited)';
-      allMatches = [...mockMatches];
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const res = await fetch(`https://v3.football.api-sports.io/fixtures?date=${today}`, {
+          headers: {
+            'x-rapidapi-key': API_KEY,
+            'x-rapidapi-host': 'v3.football.api-sports.io'
+          }
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          allMatches = data.response || [];
+          status.innerHTML = `✅ Real data loaded (${allMatches.length} matches)`;
+        } else {
+          throw new Error('API limit or error');
+        }
+      } catch (e) {
+        status.innerHTML = `⚠️ Using demo data (API issue)`;
+        allMatches = [
+          { id: 1, competition: {name: "Premier League"}, homeTeam: {name: "Arsenal"}, awayTeam: {name: "Tottenham"}, status: "LIVE", score: {fullTime: {home: 2, away: 1}} },
+          { id: 2, competition: {name: "Premier League"}, homeTeam: {name: "Manchester City"}, awayTeam: {name: "Liverpool"}, status: "LIVE", score: {fullTime: {home: 1, away: 1}} },
+          { id: 3, competition: {name: "La Liga"}, homeTeam: {name: "Real Madrid"}, awayTeam: {name: "Barcelona"}, status: "SCHEDULED", score: {fullTime: {home: null, away: null}} },
+          { id: 4, competition: {name: "Bundesliga"}, homeTeam: {name: "Bayern Munich"}, awayTeam: {name: "Borussia Dortmund"}, status: "LIVE", score: {fullTime: {home: 3, away: 2}} },
+        ];
+      }
       renderMatches();
     }
 
@@ -107,9 +126,9 @@
       container.innerHTML = '';
 
       let filtered = allMatches.filter(match => {
-        const comp = match.competition.name.toLowerCase();
-        const home = match.homeTeam.name.toLowerCase();
-        const away = match.awayTeam.name.toLowerCase();
+        const comp = (match.league?.name || match.competition?.name || "").toLowerCase();
+        const home = (match.teams?.home?.name || match.homeTeam?.name || "").toLowerCase();
+        const away = (match.teams?.away?.name || match.awayTeam?.name || "").toLowerCase();
 
         if (currentFilter !== 'all') {
           if (currentFilter === 'PL' && !comp.includes('premier')) return false;
@@ -129,21 +148,21 @@
       }
 
       filtered.forEach(match => {
-        const h = match.score?.fullTime?.home ?? '-';
-        const a = match.score?.fullTime?.away ?? '-';
-        const isLive = match.status === "LIVE";
+        const h = match.goals?.home ?? match.score?.fullTime?.home ?? '-';
+        const a = match.goals?.away ?? match.score?.fullTime?.away ?? '-';
+        const isLive = match.status?.short === "LIVE" || match.status === "LIVE";
 
         const card = document.createElement('div');
         card.className = `bg-gray-900 rounded-3xl p-6 cursor-pointer hover:scale-105 transition-all border ${isLive ? 'border-red-500' : 'border-gray-800'}`;
         card.innerHTML = `
-          <div class="text-xs text-gray-500">${match.competition.name}</div>
+          <div class="text-xs text-gray-500">${match.league?.name || match.competition?.name}</div>
           <div class="flex justify-between items-center mt-4">
-            <div class="flex-1">${match.homeTeam.name}</div>
+            <div class="flex-1">${match.teams?.home?.name || match.homeTeam?.name}</div>
             <div class="text-center">
               <div class="text-3xl font-bold">${h} - ${a}</div>
               ${isLive ? `<div class="live text-red-500 text-sm font-bold mt-1">● LIVE</div>` : ''}
             </div>
-            <div class="flex-1 text-right">${match.awayTeam.name}</div>
+            <div class="flex-1 text-right">${match.teams?.away?.name || match.awayTeam?.name}</div>
           </div>
         `;
         card.onclick = () => showMatchDetail(match);
@@ -156,13 +175,13 @@
       const recs = [
         {bet: "Over 2.5 Goals", conf: "82%", reason: "Both teams playing attacking football"},
         {bet: "BTTS - Yes", conf: "77%", reason: "High chance both will score"},
-        {bet: match.homeTeam.name + " Win", conf: "69%", reason: "Strong recent form"}
+        {bet: (match.teams?.home?.name || match.homeTeam?.name) + " Win", conf: "69%", reason: "Strong recent form"}
       ];
 
       let html = `
-        <h2 class="text-3xl font-bold text-center">${match.homeTeam.name} vs ${match.awayTeam.name}</h2>
-        <p class="text-emerald-400 text-center">${match.competition.name}</p>
-        <p class="text-center text-xl mt-6 ${match.status === "LIVE" ? "text-red-500" : ""}">${match.status === "LIVE" ? "🔴 LIVE" : "Upcoming"}</p>
+        <h2 class="text-3xl font-bold text-center">${match.teams?.home?.name || match.homeTeam?.name} vs ${match.teams?.away?.name || match.awayTeam?.name}</h2>
+        <p class="text-emerald-400 text-center">${match.league?.name || match.competition?.name}</p>
+        <p class="text-center text-xl mt-6 ${match.status?.short === "LIVE" ? "text-red-500" : ""}">${match.status?.short === "LIVE" ? "🔴 LIVE" : "Upcoming"}</p>
         <h3 class="mt-10 mb-6 text-xl font-bold text-emerald-400">Recommendations</h3>
       `;
 
@@ -171,7 +190,7 @@
           <div class="bg-gray-800 rounded-2xl p-5 mb-4">
             <div class="flex justify-between"><div class="font-bold">${r.bet}</div><div class="text-emerald-400 font-bold">${r.conf}</div></div>
             <p class="text-gray-400 text-sm mt-2">${r.reason}</p>
-            <button onclick="addToBetSlip('${match.homeTeam.name} vs ${match.awayTeam.name}', '${r.bet}', '${r.conf}', ${match.id}); closeModal()" 
+            <button onclick="addToBetSlip('${match.teams?.home?.name || match.homeTeam?.name} vs ${match.teams?.away?.name || match.awayTeam?.name}', '${r.bet}', '${r.conf}', ${match.fixture?.id || match.id}); closeModal()" 
               class="mt-4 w-full bg-emerald-500 py-4 rounded-2xl font-bold">Add to Bet Slip</button>
           </div>`;
       });
@@ -217,7 +236,7 @@
     function closeModal() { document.getElementById('modal').classList.add('hidden'); }
     function closeBetSlip() { document.getElementById('bet-slip-modal').classList.add('hidden'); }
 
-    // Start
+    // Start the app
     loadMatches();
   </script>
 </body>
