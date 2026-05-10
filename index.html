@@ -42,6 +42,7 @@
       <button onclick="filterLeague('LL')" class="league-btn px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-2xl font-medium">La Liga</button>
       <button onclick="filterLeague('BL')" class="league-btn px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-2xl font-medium">Bundesliga</button>
       <button onclick="filterLeague('SA')" class="league-btn px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-2xl font-medium">Serie A</button>
+      <button onclick="filterLeague('CL')" class="league-btn px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-2xl font-medium">Champions League</button>
     </div>
 
     <div id="status" class="text-center text-sm mb-4 text-gray-400"></div>
@@ -80,6 +81,7 @@
       { id: 3, competition: {name: "La Liga"}, homeTeam: {name: "Real Madrid"}, awayTeam: {name: "Barcelona"}, status: "SCHEDULED", score: {fullTime: {home: null, away: null}} },
       { id: 4, competition: {name: "Bundesliga"}, homeTeam: {name: "Bayern Munich"}, awayTeam: {name: "Borussia Dortmund"}, status: "LIVE", score: {fullTime: {home: 3, away: 2}} },
       { id: 5, competition: {name: "Serie A"}, homeTeam: {name: "Inter Milan"}, awayTeam: {name: "AC Milan"}, status: "SCHEDULED", score: {fullTime: {home: null, away: null}} },
+      { id: 6, competition: {name: "Champions League"}, homeTeam: {name: "PSG"}, awayTeam: {name: "Barcelona"}, status: "SCHEDULED", score: {fullTime: {home: null, away: null}} }
     ];
 
     function loadMatches() {
@@ -114,6 +116,7 @@
           if (currentFilter === 'LL' && !comp.includes('la liga')) return false;
           if (currentFilter === 'BL' && !comp.includes('bundes')) return false;
           if (currentFilter === 'SA' && !comp.includes('serie')) return false;
+          if (currentFilter === 'CL' && !comp.includes('champions')) return false;
         }
 
         if (searchTerm && !home.includes(searchTerm) && !away.includes(searchTerm) && !comp.includes(searchTerm)) return false;
