@@ -4,8 +4,28 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GeeRok-BetAI ⚽</title>
+  
+  <!-- PWA Setup -->
+  <link rel="manifest" href="data:application/manifest+json,{
+    %22name%22:%22GeeRok-BetAI%22,
+    %22short_name%22:%22GeeRokBet%22,
+    %22description%22:%22Our Football Betting AI Assistant%22,
+    %22start_url%22:%22.%22,
+    %22display%22:%22standalone%22,
+    %22background_color%22:%22%23111111%22,
+    %22theme_color%22:%22%2310b981%22,
+    %22icons%22:[{
+      %22src%22:%22https://geerok-betai.vercel.app/icon-192.png%22,
+      %22sizes%22:%22192x192%22,
+      %22type%22:%22image/png%22
+    }]
+  }">
+  <meta name="theme-color" content="#10b981">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+
   <style>
     body { font-family: 'Segoe UI', system-ui, sans-serif; }
     .live { animation: pulse 2s infinite; }
@@ -41,14 +61,15 @@
     <div id="matches-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
   </div>
 
-  <!-- Modals -->
+  <!-- Match Modal -->
   <div id="modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
     <div class="bg-gray-900 rounded-3xl max-w-lg w-full p-6 max-h-[90vh] overflow-auto">
-      <button onclick="closeModal()" class="float-right text-4xl text-gray-400">×</button>
+      <button onclick="closeModal()" class="float-right text-4xl text-gray-400 hover:text-white">×</button>
       <div id="modal-content"></div>
     </div>
   </div>
 
+  <!-- Bet Slip Modal -->
   <div id="bet-slip-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
     <div class="bg-gray-900 rounded-3xl max-w-md w-full p-6">
       <h2 class="text-2xl font-bold mb-6">Your Bet Slip</h2>
@@ -75,14 +96,14 @@
     ];
 
     function loadMatches() {
-      document.getElementById('status').innerHTML = '✅ Using demo data (API currently limited)';
+      document.getElementById('status').innerHTML = '⚠️ Using demo data (API currently limited)';
       allMatches = [...mockMatches];
       renderMatches();
     }
 
     function filterLeague(league) {
       currentFilter = league;
-      document.querySelectorAll('.league-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.league-btn').forEach(b => b.classList.remove('active'));
       event.target.classList.add('active');
       renderMatches();
     }
@@ -97,22 +118,18 @@
       container.innerHTML = '';
 
       let filtered = allMatches.filter(match => {
-        const compName = match.competition.name.toLowerCase();
-        const homeName = match.homeTeam.name.toLowerCase();
-        const awayName = match.awayTeam.name.toLowerCase();
+        const comp = match.competition.name.toLowerCase();
+        const home = match.homeTeam.name.toLowerCase();
+        const away = match.awayTeam.name.toLowerCase();
 
-        // League filter
         if (currentFilter !== 'all') {
-          if (currentFilter === 'PL' && !compName.includes('premier')) return false;
-          if (currentFilter === 'LL' && !compName.includes('la liga')) return false;
-          if (currentFilter === 'BL' && !compName.includes('bundes')) return false;
-          if (currentFilter === 'SA' && !compName.includes('serie')) return false;
+          if (currentFilter === 'PL' && !comp.includes('premier')) return false;
+          if (currentFilter === 'LL' && !comp.includes('la liga')) return false;
+          if (currentFilter === 'BL' && !comp.includes('bundes')) return false;
+          if (currentFilter === 'SA' && !comp.includes('serie')) return false;
         }
 
-        // Search filter
-        if (searchTerm && !homeName.includes(searchTerm) && !awayName.includes(searchTerm) && !compName.includes(searchTerm)) {
-          return false;
-        }
+        if (searchTerm && !home.includes(searchTerm) && !away.includes(searchTerm) && !comp.includes(searchTerm)) return false;
         return true;
       });
 
@@ -131,12 +148,12 @@
         card.innerHTML = `
           <div class="text-xs text-gray-500">${match.competition.name}</div>
           <div class="flex justify-between items-center mt-4">
-            <div class="flex-1 font-medium">${match.homeTeam.name}</div>
+            <div class="flex-1">${match.homeTeam.name}</div>
             <div class="text-center">
               <div class="text-3xl font-bold">${h} - ${a}</div>
               ${isLive ? `<div class="live text-red-500 text-sm font-bold mt-1">● LIVE</div>` : ''}
             </div>
-            <div class="flex-1 text-right font-medium">${match.awayTeam.name}</div>
+            <div class="flex-1 text-right">${match.awayTeam.name}</div>
           </div>
         `;
         card.onclick = () => showMatchDetail(match);
@@ -145,7 +162,6 @@
     }
 
     function showMatchDetail(match) {
-      // ... (same beautiful modal as before)
       const content = document.getElementById('modal-content');
       const recs = [
         {bet: "Over 2.5 Goals", conf: "82%", reason: "Both teams playing attacking football"},
@@ -211,7 +227,7 @@
     function closeModal() { document.getElementById('modal').classList.add('hidden'); }
     function closeBetSlip() { document.getElementById('bet-slip-modal').classList.add('hidden'); }
 
-    // Start the app
+    // Start
     loadMatches();
   </script>
 </body>
