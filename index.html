@@ -4,13 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GeeRok-BetAI ⚽</title>
-  
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#10b981">
-
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-
   <style>
     body { font-family: 'Segoe UI', system-ui, sans-serif; }
     .live { animation: pulse 2s infinite; }
@@ -47,7 +42,7 @@
     <div id="matches-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
   </div>
 
-  <!-- Match Modal -->
+  <!-- Live Match Modal -->
   <div id="modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
     <div class="bg-gray-900 rounded-3xl max-w-lg w-full p-6 max-h-[90vh] overflow-auto">
       <button onclick="closeModal()" class="float-right text-4xl text-gray-400 hover:text-white">×</button>
@@ -68,37 +63,22 @@
   </div>
 
   <script>
-    const API_KEY = "cb4c8d9706604140d9da4e969b36d2d5";
-
     let betSlip = [];
     let allMatches = [];
     let currentFilter = 'all';
     let searchTerm = '';
+    let liveInterval = null;
 
-    async function loadMatches() {
+    function loadMatches() {
       const status = document.getElementById('status');
-      status.innerHTML = '🔄 Fetching real matches...';
-
-      try {
-        const today = new Date().toISOString().split('T')[0];
-        const res = await fetch(`https://v3.football.api-sports.io/fixtures?date=${today}`, {
-          headers: {
-            'x-rapidapi-key': API_KEY,
-            'x-rapidapi-host': 'v3.football.api-sports.io'
-          }
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          allMatches = data.response || [];
-          status.innerHTML = `✅ Real data loaded (${allMatches.length} matches)`;
-        } else {
-          throw new Error();
-        }
-      } catch (e) {
-        status.innerHTML = `⚠️ Using demo data`;
-        allMatches = [];
-      }
+      allMatches = [
+        {id:101, league:{name:"Premier League"}, home:"Liverpool", away:"Arsenal"},
+        {id:102, league:{name:"La Liga"}, home:"Real Madrid", away:"Barcelona"},
+        {id:103, league:{name:"Bundesliga"}, home:"Bayern Munich", away:"Borussia Dortmund"},
+        {id:104, league:{name:"Serie A"}, home:"Juventus", away:"Inter Milan"},
+        {id:105, league:{name:"Champions League"}, home:"Manchester City", away:"PSG"}
+      ];
+      status.innerHTML = `✅ ${allMatches.length} upcoming matches loaded`;
       renderMatches();
     }
 
@@ -118,45 +98,17 @@
       const container = document.getElementById('matches-list');
       container.innerHTML = '';
 
-      let filtered = allMatches.filter(match => {
-        const comp = (match.league?.name || "").toLowerCase();
-        const home = (match.teams?.home?.name || "").toLowerCase();
-        const away = (match.teams?.away?.name || "").toLowerCase();
-
-        if (currentFilter !== 'all') {
-          if (currentFilter === 'PL' && !comp.includes('premier')) return false;
-          if (currentFilter === 'LL' && !comp.includes('la liga')) return false;
-          if (currentFilter === 'BL' && !comp.includes('bundes')) return false;
-          if (currentFilter === 'SA' && !comp.includes('serie')) return false;
-          if (currentFilter === 'CL' && !comp.includes('champions')) return false;
-        }
-
-        if (searchTerm && !home.includes(searchTerm) && !away.includes(searchTerm) && !comp.includes(searchTerm)) return false;
-        return true;
-      });
-
-      if (filtered.length === 0) {
-        container.innerHTML = `<p class="col-span-3 text-center py-20 text-gray-400">No matches found for this filter.</p>`;
-        return;
-      }
-
-      filtered.forEach(match => {
-        const h = match.goals?.home ?? '-';
-        const a = match.goals?.away ?? '-';
-        const isLive = match.status?.short === "LIVE";
-
+      allMatches.forEach(match => {
         const card = document.createElement('div');
-        card.className = `bg-gray-900 rounded-3xl p-6 cursor-pointer hover:scale-105 transition-all border ${isLive ? 'border-red-500' : 'border-gray-800'}`;
+        card.className = "bg-gray-900 rounded-3xl p-6 cursor-pointer hover:scale-105 transition-all border border-gray-700";
         card.innerHTML = `
-          <div class="text-xs text-gray-500">${match.league?.name}</div>
+          <div class="text-xs text-gray-500">${match.league.name}</div>
           <div class="flex justify-between items-center mt-4">
-            <div class="flex-1 font-medium">${match.teams?.home?.name}</div>
-            <div class="text-center">
-              <div class="text-3xl font-bold">${h} - ${a}</div>
-              ${isLive ? `<div class="live text-red-500 text-sm font-bold mt-1">● LIVE</div>` : ''}
-            </div>
-            <div class="flex-1 text-right font-medium">${match.teams?.away?.name}</div>
+            <div class="flex-1 font-medium">${match.home}</div>
+            <div class="text-center text-xl font-bold text-gray-400">VS</div>
+            <div class="flex-1 text-right font-medium">${match.away}</div>
           </div>
+          <div class="text-center text-emerald-400 text-sm mt-3">Upcoming</div>
         `;
         card.onclick = () => showMatchDetail(match);
         container.appendChild(card);
@@ -165,40 +117,112 @@
 
     function showMatchDetail(match) {
       const content = document.getElementById('modal-content');
-      
       const recs = [
-        {bet: "Over 2.5 Goals", conf: "78%", reason: "Average goals in recent matches"},
-        {bet: "BTTS - Yes", conf: "72%", reason: "Both teams scoring frequently"},
-        {bet: "Corners Over 9.5", conf: "68%", reason: "High corner count expected"},
-        {bet: match.teams?.home?.name + " Win", conf: "63%", reason: "Home advantage"}
+        {bet: "Over 2.5 Goals", conf: "78%", reason: "High scoring expected"},
+        {bet: "BTTS - Yes", conf: "74%", reason: "Both teams attacking well"},
+        {bet: "Corners Over 9.5", conf: "71%", reason: "Open and intense game"},
+        {bet: match.home + " Win", conf: "62%", reason: "Strong home form"}
       ];
 
       let html = `
-        <h2 class="text-3xl font-bold text-center">${match.teams?.home?.name} vs ${match.teams?.away?.name}</h2>
-        <p class="text-emerald-400 text-center">${match.league?.name}</p>
-        <p class="text-center text-xl mt-6 ${match.status?.short === "LIVE" ? "text-red-500" : ""}">${match.status?.short === "LIVE" ? "🔴 LIVE" : "Upcoming"}</p>
-        <h3 class="mt-10 mb-6 text-xl font-bold text-emerald-400">Smart Recommendations</h3>
+        <h2 class="text-3xl font-bold text-center">${match.home} vs ${match.away}</h2>
+        <p class="text-emerald-400 text-center">${match.league.name}</p>
+        <p class="text-center text-xl mt-6 text-emerald-400">Upcoming Match</p>
+        <h3 class="mt-8 mb-4 text-xl font-bold text-emerald-400">Recommended Bets</h3>
       `;
 
       recs.forEach(r => {
         html += `
           <div class="bg-gray-800 rounded-2xl p-5 mb-4">
-            <div class="flex justify-between items-start">
-              <div>
-                <div class="font-bold">${r.bet}</div>
-                <p class="text-gray-400 text-sm mt-1">${r.reason}</p>
-              </div>
-              <div class="text-emerald-400 font-bold text-xl">${r.conf}</div>
+            <div class="flex justify-between">
+              <div class="font-bold">${r.bet}</div>
+              <div class="text-emerald-400 font-bold">${r.conf}</div>
             </div>
-            <button onclick="addToBetSlip('${match.teams?.home?.name} vs ${match.teams?.away?.name}', '${r.bet}', '${r.conf}', ${match.fixture?.id}); closeModal()" 
-              class="mt-5 w-full bg-emerald-500 hover:bg-emerald-600 py-4 rounded-2xl font-bold">Add to Bet Slip</button>
+            <p class="text-gray-400 text-sm mt-2">${r.reason}</p>
+            <button onclick="addToBetSlip('${match.home} vs ${match.away}', '${r.bet}', '${r.conf}', ${match.id});" 
+              class="mt-4 w-full bg-emerald-500 py-4 rounded-2xl font-bold">Add to Bet Slip</button>
           </div>`;
       });
+
+      html += `<button onclick="startLiveMonitoring('${match.home}', '${match.away}', ${match.id}); closeModal()" class="mt-4 w-full bg-blue-600 py-4 rounded-2xl font-bold">Start Live Monitoring</button>`;
 
       content.innerHTML = html;
       document.getElementById('modal').classList.remove('hidden');
     }
 
+    function startLiveMonitoring(home, away, id) {
+      let homeScore = 0, awayScore = 0, cornersH = 3, cornersA = 2, cardsH = 1, cardsA = 2, possessionH = 52;
+
+      const content = document.getElementById('modal-content');
+      content.innerHTML = `
+        <h2 class="text-3xl font-bold text-center">${home} vs ${away}</h2>
+        <div id="live-score" class="text-6xl font-bold text-center my-8">0 - 0</div>
+        <div class="grid grid-cols-3 gap-4 text-center mb-8">
+          <div><div class="text-sm text-gray-400">Corners</div><div id="corners" class="text-2xl">${cornersH} - ${cornersA}</div></div>
+          <div><div class="text-sm text-gray-400">Cards</div><div id="cards" class="text-2xl">${cardsH} - ${cardsA}</div></div>
+          <div><div class="text-sm text-gray-400">Possession</div><div id="possession" class="text-2xl">${possessionH}% - ${100-possessionH}%</div></div>
+        </div>
+        <div id="cashout-box" class="bg-gray-800 rounded-2xl p-6 mb-6">
+          <div class="text-emerald-400 font-bold">CASH OUT RECOMMENDATION</div>
+          <div id="advice" class="text-2xl font-bold mt-2 text-emerald-400">STAY - Match is balanced</div>
+        </div>
+        <button onclick="closeModal()" class="w-full bg-gray-700 py-4 rounded-2xl font-bold">Close Live Monitor</button>
+      `;
+
+      document.getElementById('modal').classList.remove('hidden');
+
+      if (liveInterval) clearInterval(liveInterval);
+
+      liveInterval = setInterval(() => {
+        if (Math.random() < 0.22) homeScore++;
+        if (Math.random() < 0.19) awayScore++;
+        if (Math.random() < 0.4) cornersH++;
+        if (Math.random() < 0.35) cornersA++;
+        if (Math.random() < 0.25) cardsH++;
+        if (Math.random() < 0.28) cardsA++;
+
+        possessionH = Math.max(38, Math.min(68, possessionH + (Math.random() * 6 - 3)));
+
+        document.getElementById('live-score').textContent = `${homeScore} - ${awayScore}`;
+        document.getElementById('corners').textContent = `${cornersH} - ${cornersA}`;
+        document.getElementById('cards').textContent = `${cardsH} - ${cardsA}`;
+        document.getElementById('possession').textContent = `${Math.round(possessionH)}% - ${Math.round(100-possessionH)}%`;
+
+        // Smart Cash-Out Logic
+        const totalGoals = homeScore + awayScore;
+        let advice = "STAY - Good value";
+        let color = "text-emerald-400";
+
+        if (totalGoals >= 3) {
+          advice = "CASH OUT NOW - Target reached";
+          color = "text-yellow-400";
+        } else if (homeScore - awayScore >= 2) {
+          advice = `CASH OUT - ${home} dominating`;
+          color = "text-emerald-400";
+        } else if (awayScore - homeScore >= 2) {
+          advice = `CASH OUT - ${away} leading strongly`;
+          color = "text-yellow-400";
+        }
+
+        document.getElementById('advice').className = `text-2xl font-bold mt-2 ${color}`;
+        document.getElementById('advice').textContent = advice;
+
+        // Send notification on goal
+        if (Math.random() < 0.15) {
+          new Notification("Goal!", { 
+            body: `${home} ${homeScore} - ${awayScore} ${away}`,
+            icon: "https://picsum.photos/id/237/192/192"
+          });
+        }
+      }, 2200);
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.add('hidden');
+      if (liveInterval) clearInterval(liveInterval);
+    }
+
+    // Bet Slip Functions
     function addToBetSlip(matchName, bet, conf, matchId) {
       if (betSlip.some(b => b.matchId === matchId)) {
         alert("⚠️ You already have a bet on this match!");
@@ -206,20 +230,17 @@
       }
       betSlip.push({match: matchName, bet, conf, matchId});
       document.getElementById('bet-count').textContent = betSlip.length;
-      alert(`✅ Added: ${bet} on ${matchName}`);
+      alert(`✅ Added: ${bet}`);
     }
 
     function showBetSlip() {
       const content = document.getElementById('bet-slip-content');
       content.innerHTML = betSlip.length === 0 ? 
         `<p class="text-gray-400 text-center py-12">Your bet slip is empty</p>` : 
-        betSlip.map((item, i) => `
-          <div class="bg-gray-800 p-4 rounded-2xl flex justify-between items-center">
-            <div>
-              <div class="font-semibold">${item.match}</div>
-              <div class="text-emerald-400">${item.bet} • ${item.conf}</div>
-            </div>
-            <button onclick="removeFromSlip(${i})" class="text-red-400 hover:text-red-500">Remove</button>
+        betSlip.map((item,i) => `
+          <div class="bg-gray-800 p-4 rounded-2xl flex justify-between">
+            <div><div class="font-semibold">${item.match}</div><div class="text-emerald-400">${item.bet} • ${item.conf}</div></div>
+            <button onclick="removeFromSlip(${i})" class="text-red-400">Remove</button>
           </div>`).join('');
       document.getElementById('bet-slip-modal').classList.remove('hidden');
     }
@@ -236,11 +257,7 @@
       showBetSlip();
     }
 
-    function closeModal() { document.getElementById('modal').classList.add('hidden'); }
     function closeBetSlip() { document.getElementById('bet-slip-modal').classList.add('hidden'); }
-
-    // Auto refresh
-    setInterval(loadMatches, 30000);
 
     // Start
     loadMatches();
