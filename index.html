@@ -42,15 +42,14 @@
     <div id="matches-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
   </div>
 
-  <!-- Live Match Modal -->
+  <!-- Live Modal -->
   <div id="modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
-    <div class="bg-gray-900 rounded-3xl max-w-lg w-full p-6 max-h-[90vh] overflow-auto">
-      <button onclick="closeModal()" class="float-right text-4xl text-gray-400 hover:text-white">×</button>
-      <div id="modal-content"></div>
+    <div class="bg-gray-900 rounded-3xl max-w-lg w-full p-6 max-h-[90vh] overflow-auto" id="modal-content">
+      <!-- Content injected by JS -->
     </div>
   </div>
 
-  <!-- Bet Slip Modal -->
+  <!-- Bet Slip -->
   <div id="bet-slip-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
     <div class="bg-gray-900 rounded-3xl max-w-md w-full p-6">
       <h2 class="text-2xl font-bold mb-6">Your Bet Slip</h2>
@@ -82,18 +81,6 @@
       renderMatches();
     }
 
-    function filterLeague(league) {
-      currentFilter = league;
-      document.querySelectorAll('.league-btn').forEach(b => b.classList.remove('active'));
-      event.target.classList.add('active');
-      renderMatches();
-    }
-
-    function filterMatches() {
-      searchTerm = document.getElementById('search').value.toLowerCase().trim();
-      renderMatches();
-    }
-
     function renderMatches() {
       const container = document.getElementById('matches-list');
       container.innerHTML = '';
@@ -119,9 +106,9 @@
       const content = document.getElementById('modal-content');
       const recs = [
         {bet: "Over 2.5 Goals", conf: "78%", reason: "High scoring expected"},
-        {bet: "BTTS - Yes", conf: "74%", reason: "Both teams attacking well"},
-        {bet: "Corners Over 9.5", conf: "71%", reason: "Open and intense game"},
-        {bet: match.home + " Win", conf: "62%", reason: "Strong home form"}
+        {bet: "BTTS - Yes", conf: "74%", reason: "Both teams attacking strongly"},
+        {bet: "Corners Over 9.5", conf: "71%", reason: "Open and intense match"},
+        {bet: match.home + " Win", conf: "62%", reason: "Home advantage"}
       ];
 
       let html = `
@@ -144,29 +131,29 @@
           </div>`;
       });
 
-      html += `<button onclick="startLiveMonitoring('${match.home}', '${match.away}', ${match.id}); closeModal()" class="mt-4 w-full bg-blue-600 py-4 rounded-2xl font-bold">Start Live Monitoring</button>`;
+      html += `<button onclick="startLiveMonitoring('${match.home}', '${match.away}', ${match.id});" class="mt-6 w-full bg-blue-600 py-4 rounded-2xl font-bold text-lg">Start Live Monitoring</button>`;
 
       content.innerHTML = html;
       document.getElementById('modal').classList.remove('hidden');
     }
 
     function startLiveMonitoring(home, away, id) {
-      let homeScore = 0, awayScore = 0, cornersH = 3, cornersA = 2, cardsH = 1, cardsA = 2, possessionH = 52;
+      let homeScore = 0, awayScore = 0, cornersH = 4, cornersA = 2;
 
       const content = document.getElementById('modal-content');
       content.innerHTML = `
         <h2 class="text-3xl font-bold text-center">${home} vs ${away}</h2>
-        <div id="live-score" class="text-6xl font-bold text-center my-8">0 - 0</div>
-        <div class="grid grid-cols-3 gap-4 text-center mb-8">
-          <div><div class="text-sm text-gray-400">Corners</div><div id="corners" class="text-2xl">${cornersH} - ${cornersA}</div></div>
-          <div><div class="text-sm text-gray-400">Cards</div><div id="cards" class="text-2xl">${cardsH} - ${cardsA}</div></div>
-          <div><div class="text-sm text-gray-400">Possession</div><div id="possession" class="text-2xl">${possessionH}% - ${100-possessionH}%</div></div>
+        <div id="live-score" class="text-6xl font-bold text-center my-10">0 - 0</div>
+        <div class="grid grid-cols-3 gap-6 text-center mb-8">
+          <div><div class="text-sm text-gray-400">Corners</div><div id="corners" class="text-3xl font-bold">${cornersH} - ${cornersA}</div></div>
+          <div><div class="text-sm text-gray-400">Cards</div><div id="cards" class="text-3xl font-bold">1 - 2</div></div>
+          <div><div class="text-sm text-gray-400">Possession</div><div id="possession" class="text-3xl font-bold">54% - 46%</div></div>
         </div>
         <div id="cashout-box" class="bg-gray-800 rounded-2xl p-6 mb-6">
-          <div class="text-emerald-400 font-bold">CASH OUT RECOMMENDATION</div>
-          <div id="advice" class="text-2xl font-bold mt-2 text-emerald-400">STAY - Match is balanced</div>
+          <div class="text-emerald-400 font-bold mb-1">CASH OUT RECOMMENDATION</div>
+          <div id="advice" class="text-2xl font-bold text-emerald-400">STAY - Good value remaining</div>
         </div>
-        <button onclick="closeModal()" class="w-full bg-gray-700 py-4 rounded-2xl font-bold">Close Live Monitor</button>
+        <button onclick="closeModal()" class="w-full bg-gray-700 py-4 rounded-2xl font-bold">Close Live View</button>
       `;
 
       document.getElementById('modal').classList.remove('hidden');
@@ -174,47 +161,29 @@
       if (liveInterval) clearInterval(liveInterval);
 
       liveInterval = setInterval(() => {
-        if (Math.random() < 0.22) homeScore++;
-        if (Math.random() < 0.19) awayScore++;
+        if (Math.random() < 0.25) homeScore++;
+        if (Math.random() < 0.20) awayScore++;
         if (Math.random() < 0.4) cornersH++;
         if (Math.random() < 0.35) cornersA++;
-        if (Math.random() < 0.25) cardsH++;
-        if (Math.random() < 0.28) cardsA++;
-
-        possessionH = Math.max(38, Math.min(68, possessionH + (Math.random() * 6 - 3)));
 
         document.getElementById('live-score').textContent = `${homeScore} - ${awayScore}`;
         document.getElementById('corners').textContent = `${cornersH} - ${cornersA}`;
-        document.getElementById('cards').textContent = `${cardsH} - ${cardsA}`;
-        document.getElementById('possession').textContent = `${Math.round(possessionH)}% - ${Math.round(100-possessionH)}%`;
 
-        // Smart Cash-Out Logic
-        const totalGoals = homeScore + awayScore;
+        const total = homeScore + awayScore;
         let advice = "STAY - Good value";
         let color = "text-emerald-400";
 
-        if (totalGoals >= 3) {
+        if (total >= 3) {
           advice = "CASH OUT NOW - Target reached";
           color = "text-yellow-400";
         } else if (homeScore - awayScore >= 2) {
-          advice = `CASH OUT - ${home} dominating`;
+          advice = home + " dominating - Consider Cash Out";
           color = "text-emerald-400";
-        } else if (awayScore - homeScore >= 2) {
-          advice = `CASH OUT - ${away} leading strongly`;
-          color = "text-yellow-400";
         }
 
-        document.getElementById('advice').className = `text-2xl font-bold mt-2 ${color}`;
+        document.getElementById('advice').className = `text-2xl font-bold ${color}`;
         document.getElementById('advice').textContent = advice;
-
-        // Send notification on goal
-        if (Math.random() < 0.15) {
-          new Notification("Goal!", { 
-            body: `${home} ${homeScore} - ${awayScore} ${away}`,
-            icon: "https://picsum.photos/id/237/192/192"
-          });
-        }
-      }, 2200);
+      }, 1800);
     }
 
     function closeModal() {
@@ -222,7 +191,6 @@
       if (liveInterval) clearInterval(liveInterval);
     }
 
-    // Bet Slip Functions
     function addToBetSlip(matchName, bet, conf, matchId) {
       if (betSlip.some(b => b.matchId === matchId)) {
         alert("⚠️ You already have a bet on this match!");
@@ -259,7 +227,6 @@
 
     function closeBetSlip() { document.getElementById('bet-slip-modal').classList.add('hidden'); }
 
-    // Start
     loadMatches();
   </script>
 </body>
